@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PO, Invoice & GRN Generator</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 40px; }
+    .form-section { margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, select { padding: 5px; width: 300px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f0f0f0; }
+    .output { border: 1px solid #ccc; padding: 15px; margin-top: 20px; background: #fafafa; }
+    button { margin-top: 10px; padding: 6px 12px; cursor: pointer; }
+</style>
+<!-- PDF library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<h1>PO, Invoice & GRN Generator</h1>
+
+<div class="form-section">
+    <label>Customer Name</label>
+    <select id="customer">
+        <option value="">--Select--</option>
+    </select>
+
+    <div id="customerDetails"></div>
+
+    <label>Vendor Name</label>
+    <input type="text" id="vendorName">
+
+    <label>Vendor Address</label>
+    <input type="text" id="vendorAddress">
+
+    <label>Vendor GST</label>
+    <input type="text" id="vendorGST">
+
+    <label>PO Number</label>
+    <input type="text" id="poNumber">
+
+    <label>Item</label>
+    <select id="itemSelect">
+        <option value="">--Select--</option>
+    </select>
+
+    <div id="itemDetails"></div>
+
+    <button onclick="addItem()">Add Item to PO</button>
+</div>
+
+<h2>PO Items</h2>
+<table id="poTable">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Amount</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<button onclick="generateDocs()">Generate PO, Invoice & GRN</button>
+
+<div id="documents"></div>
+
+<script>
+const customers = [
+    { name: "Reliance Industries", address: "Maker Chambers IV, Mumbai, MH", gst: "27AAAAA0000A1Z5" },
+    { name: "Tata Consumer Products", address: "Cinnamon House, Mumbai, MH", gst: "27BBBBB0000B1Z5" },
+    { name: "ITC Limited", address: "Virginia House, Kolkata, WB", gst: "19CCCCC0000C1Z5" },
+    { name: "Hindustan Unilever", address: "Unilever House, Mumbai, MH", gst: "27DDDDD0000D1Z5" },
+    { name: "Marico Limited", address: "Kalina, Mumbai, MH", gst: "27EEEEE0000E1Z5" }
+];
+
+const items = [
+    { name: "Item A", qty: 10, rate: 100 },
+    { name: "Item B", qty: 5, rate: 200 },
+    { name: "Item C", qty: 8, rate: 150 },
+    { name: "Item D", qty: 12, rate: 120 },
+    { name: "Item E", qty: 20, rate: 80 }
+];
+
+let poItems = [];
+
+window.onload = function() {
+    const custSel = document.getElementById("customer");
+    customers.forEach((c, i) => {
+        let opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = c.name;
+        custSel.appendChild(opt);
+    });
+
+    const itemSel = document.getElementById("itemSelect");
+    items.forEach((it, i) => {
+        let opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = it.name;
+        itemSel.appendChild(opt);
+    });
+
+    custSel.addEventListener("change", function() {
+        const c = customers[this.value];
+        if (c) {
+            document.getElementById("customerDetails").innerHTML = 
+                `<b>Address:</b> ${c.address}<br><b>GST:</b> ${c.gst}`;
+        } else {
+            document.getElementById("customerDetails").innerHTML = "";
+        }
+    });
+
+    document.getElementById("itemSelect").addEventListener("change", function() {
+        const it = items[this.value];
+        if (it) {
+            document.getElementById("itemDetails").innerHTML = 
+                `<b>Qty:</b> ${it.qty} | <b>Rate:</b> ₹${it.rate}`;
+        } else {
+            document.getElementById("itemDetails").innerHTML = "";
+        }
+    });
+};
+
+function addItem() {
+    const itemIndex = document.getElementById("itemSelect").value;
+    if (itemIndex === "") return alert("Select an item");
+
+    const it = { ...items[itemIndex] };
+    poItems.push(it);
+    renderPO();
+}
+
+function renderPO() {
+    const tbody = document.querySelector("#poTable tbody");
+    tbody.innerHTML = "";
+    poItems.forEach(it => {
+        const row = `<tr>
+            <td>${it.name}</td>
+            <td>${it.qty}</td>
+            <td>${it.rate}</td>
+            <td>${(it.qty * it.rate).toFixed(2)}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}
+
+function downloadPDF(elementId, filename) {
+    const element = document.getElementById(elementId);
+    html2pdf().from(element).save(filename);
+}
+
+function generateDocs() {
+    if (poItems.length === 0) return alert("Add items first");
+    const customer = customers[document.getElementById("customer").value];
+    const vendorName = document.getElementById("vendorName").value;
+    const vendorAddress = document.getElementById("vendorAddress").value;
+    const vendorGST = document.getElementById("vendorGST").value;
+    const poNumber = document.getElementById("poNumber").value;
+
+    let docsHTML = "";
+
+    ["Purchase Order", "Invoice", "GRN"].forEach(type => {
+        const docId = `${type.replace(/\s/g, '')}Doc`;
+        docsHTML += `<div class="output" id="${docId}">
+            <h2>${type}</h2>
+            <b>Customer:</b> ${customer.name} (${customer.gst})<br>
+            <b>Address:</b> ${customer.address}<br><br>
+            <b>Vendor:</b> ${vendorName} (${vendorGST})<br>
+            <b>Address:</b> ${vendorAddress}<br><br>
+            <b>PO Number:</b> ${poNumber}<br><br>
+            <table>
+                <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+                <tbody>
+                    ${poItems.map(it => {
+                        let qty = type === "Purchase Order" ? it.qty : Math.floor(Math.random() * it.qty) + 1;
+                        let rate = type === "Purchase Order" ? it.rate : (it.rate + Math.floor(Math.random()*20));
+                        return `<tr>
+                            <td>${it.name}</td>
+                            <td contenteditable="true">${qty}</td>
+                            <td contenteditable="true">${rate}</td>
+                            <td>${(qty * rate).toFixed(2)}</td>
+                        </tr>`;
+                    }).join("")}
+                </tbody>
+            </table>
+        </div>
+        <button onclick="downloadPDF('${docId}', '${type}.pdf')">Download ${type} as PDF</button>`;
+    });
+
+    document.getElementById("documents").innerHTML = docsHTML;
+}
+</script>
+
+</body>
+</html>
