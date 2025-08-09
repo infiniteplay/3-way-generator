@@ -4,40 +4,32 @@
 <meta charset="UTF-8">
 <title>PO, Invoice & GRN Generator</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h2 { margin-top: 40px; }
-    .form-section { margin-bottom: 20px; }
-    label { display: block; margin-top: 10px; }
-    input, select { padding: 5px; width: 300px; }
+    body { font-family: Arial, sans-serif; background: #f7f8fa; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: auto; background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    select, input { padding: 8px; width: 100%; margin-top: 5px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #f0f0f0; }
-    .output { border: 1px solid #ccc; padding: 15px; margin-top: 20px; background: #fafafa; }
-    button { margin-top: 10px; padding: 6px 12px; cursor: pointer; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f4f4f4; }
+    button { padding: 8px 16px; margin-top: 10px; background: #007BFF; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #0056b3; }
+    .output { padding: 20px; margin-top: 30px; border: 1px solid #ccc; }
+    .doc-header { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
 </style>
-<!-- PDF library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-<h1>PO, Invoice & GRN Generator</h1>
+<div class="container">
+    <h1>PO, Invoice & GRN Generator</h1>
 
-<div class="form-section">
     <label>Customer Name</label>
     <select id="customer">
         <option value="">--Select--</option>
     </select>
 
-    <div id="customerDetails"></div>
-
-    <label>Vendor Name</label>
-    <input type="text" id="vendorName">
-
-    <label>Vendor Address</label>
-    <input type="text" id="vendorAddress">
-
-    <label>Vendor GST</label>
-    <input type="text" id="vendorGST">
+    <div id="customerDetails" style="margin-top:10px;"></div>
 
     <label>PO Number</label>
     <input type="text" id="poNumber">
@@ -47,27 +39,27 @@
         <option value="">--Select--</option>
     </select>
 
-    <div id="itemDetails"></div>
+    <div id="itemDetails" style="margin-top:10px;"></div>
 
     <button onclick="addItem()">Add Item to PO</button>
+
+    <h3>PO Items</h3>
+    <table id="poTable">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <button onclick="generateDocs()">Generate PO, Invoice & GRN</button>
+
+    <div id="documents"></div>
 </div>
-
-<h2>PO Items</h2>
-<table id="poTable">
-    <thead>
-        <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>Amount</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
-
-<button onclick="generateDocs()">Generate PO, Invoice & GRN</button>
-
-<div id="documents"></div>
 
 <script>
 const customers = [
@@ -85,6 +77,12 @@ const items = [
     { name: "Item D", qty: 12, rate: 120 },
     { name: "Item E", qty: 20, rate: 80 }
 ];
+
+const vendor = {
+    name: "Growquest Consulting LLP",
+    address: "404, Lakedew, Haralur, Bangalore 560102",
+    gst: "29AABCB1043Q1ZI"
+};
 
 let poItems = [];
 
@@ -151,15 +149,13 @@ function renderPO() {
 
 function downloadPDF(elementId, filename) {
     const element = document.getElementById(elementId);
-    html2pdf().from(element).save(filename);
+    const opt = { margin: 10, filename: filename, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+    html2pdf().set(opt).from(element).save();
 }
 
 function generateDocs() {
     if (poItems.length === 0) return alert("Add items first");
     const customer = customers[document.getElementById("customer").value];
-    const vendorName = document.getElementById("vendorName").value;
-    const vendorAddress = document.getElementById("vendorAddress").value;
-    const vendorGST = document.getElementById("vendorGST").value;
     const poNumber = document.getElementById("poNumber").value;
 
     let docsHTML = "";
@@ -167,11 +163,11 @@ function generateDocs() {
     ["Purchase Order", "Invoice", "GRN"].forEach(type => {
         const docId = `${type.replace(/\s/g, '')}Doc`;
         docsHTML += `<div class="output" id="${docId}">
-            <h2>${type}</h2>
+            <div class="doc-header">${type}</div>
             <b>Customer:</b> ${customer.name} (${customer.gst})<br>
             <b>Address:</b> ${customer.address}<br><br>
-            <b>Vendor:</b> ${vendorName} (${vendorGST})<br>
-            <b>Address:</b> ${vendorAddress}<br><br>
+            <b>Vendor:</b> ${vendor.name} (${vendor.gst})<br>
+            <b>Address:</b> ${vendor.address}<br><br>
             <b>PO Number:</b> ${poNumber}<br><br>
             <table>
                 <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
